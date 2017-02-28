@@ -34,16 +34,7 @@ class Model(object):
     _select_filter = None
 
     def __init__(self):
-        if not self.__database__:
-            self.__database__ = '{}.db'.format(self.__class__.__name__.lower())
-        
-        if not self.__table__:
-            self.__table__ = self.__class__.__name__.lower()
-
-        # for the static context:
-        Model.__table__ = self.__table__
-        Model.__database__ = self.__database__
-
+        self._check_config()
         self._form_fields = self._get_fields()
 
         sql_fields = ''
@@ -116,13 +107,13 @@ class Model(object):
             else:
                 return cursor.lastrowid
 
-    @staticmethod
-    def select(fields='*'):
-        Model._select_fields = fields
-        return Model
+    @classmethod
+    def select(cls, fields='*'):
+        cls._select_fields = fields
+        return cls
 
-    @staticmethod
-    def filter(where=None, order_by=None):
+    @classmethod
+    def filter(cls, where=None, order_by=None):
         sql_filter = None
         if where:
             sql_filter = ' WHERE {}'.format(where)
@@ -131,32 +122,41 @@ class Model(object):
                 sql_filter = ' {0} ORDER BY {1}'.format(sql_filter, order_by)
             else:
                 sql_filter = ' ORDER BY {}'.format(order_by)
-        sql_select = '{0} {1}'.format(Model._make_select(), sql_filter)
-        return Model._execute_select_or_delete(sql_select)
+        sql_select = '{0} {1}'.format(cls._make_select(), sql_filter)
+        return cls._execute_select_or_delete(sql_select)
 
-    @staticmethod
-    def all():
-        sql_select = Model._make_select()
-        return Model._execute_select_or_delete(sql_select)
+    @classmethod
+    def all(cls):
+        sql_select = cls._make_select()
+        return cls._execute_select_or_delete(sql_select)
 
-    @staticmethod
-    def _make_select():
-        return 'SELECT {0} FROM {1}'.format(Model._select_fields, Model.__table__)
+    @classmethod
+    def _make_select(cls):
+        cls._check_config()
+        return 'SELECT {0} FROM {1}'.format(cls._select_fields, cls.__table__)
 
-    @staticmethod
-    def delete(where=None):
+    @classmethod
+    def delete(cls, where=None):
         """returns de rows affected"""
-        sql_delete = 'DELETE FROM {}'.format(Model.__table__)
+        cls._check_config()
+        sql_delete = 'DELETE FROM {}'.format(cls.__table__)
         if where:
             sql_delete = '{0} WHERE {1}'.format(sql_delete, where)
-        return Model._execute_select_or_delete(sql_delete, for_delete=True)
+        return cls._execute_select_or_delete(sql_delete, for_delete=True)
 
-    @staticmethod
-    def _execute_select_or_delete(sql, for_delete=False):
-        cn = lite.connect(Model.__database__)
+    @classmethod
+    def _execute_select_or_delete(cls, sql, for_delete=False):
+        cn = lite.connect(cls.__database__)
         with cn:
             cursor = cn.cursor()
             cursor.execute(sql)
             if for_delete:
                 return cursor.rowcount
             return cursor.fetchall()
+
+    @classmethod
+    def _check_config(cls):
+        if not cls.__database__:
+            cls.__database__ = '{}.db'.format(cls.__name__.lower())
+        if not cls.__table__:
+            cls.__table__ = cls.__name__.lower()

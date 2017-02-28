@@ -35,7 +35,7 @@ class Model(object):
 
     def __init__(self):
         self._check_config()
-        self._form_fields = self._get_fields()
+        self._search_form_fields()
 
         sql_fields = ''
         for field, type_field in self._form_fields.iteritems():
@@ -54,26 +54,24 @@ class Model(object):
             self._fields_with_value.append(key)
             self._fields_value.append(value)
 
-    def _get_fields(self):
+    def _search_form_fields(self):
         """check the fields and match with its data type according to:
          https://www.sqlite.org/datatype3.html"""
-        fields = {}
         for attr in dir(self):
             if not callable(getattr(self, attr)) and not attr.startswith('_') and attr not in self._data_types:
                 attr_type = type(getattr(self, attr))
                 if attr_type == int:
-                    fields[attr] = 'INTEGER'
+                    self._form_fields[attr] = 'INTEGER'
                 elif attr_type == float:
-                    fields[attr] = 'REAL'
+                    self._form_fields[attr] = 'REAL'
                 elif attr_type == str:
-                    fields[attr] = 'TEXT'
+                    self._form_fields[attr] = 'TEXT'
                 elif attr_type == bool:
-                    fields[attr] = 'NUMERIC'
+                    self._form_fields[attr] = 'NUMERIC'
                 elif attr_type == datetime:
-                    fields[attr] = 'NUMERIC'
+                    self._form_fields[attr] = 'NUMERIC'
                 else:
-                    fields[attr] = ''
-        return fields
+                    self._form_fields[attr] = ''
 
     def save(self):
         """returns sqlite rowid"""

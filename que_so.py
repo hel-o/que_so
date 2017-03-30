@@ -9,7 +9,7 @@ import sqlite3 as lite
 from datetime import datetime
 
 __author__ = 'Helo'
-__version__ = '0.1.2'
+__version__ = '0.1.3'
 __license__ = 'BSD'
 
 
@@ -27,13 +27,12 @@ class Model(object):
     __database__ = None
     __table__ = None
 
-    _form_fields = {}
-    _select_fields = '*'
-    _select_filter = None
-
     def __init__(self, dummy=False):
+        # this field must be here at this position, because the special method __setattr__ call it first:
+        self._form_fields = {}
         self._fields_with_value = []
         self._fields_value = []
+        self._select_fields = '*'
 
         if dummy:
             return

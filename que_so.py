@@ -130,20 +130,7 @@ class Model(object):
     @classmethod
     def all(cls):
         sql_select = cls._make_select()
-        try:
-            items = cls._execute_select_or_delete(sql_select)
-        except lite.OperationalError as e:
-            if 'no such table' in e.message:
-                return []
-            raise e
-        else:
-            items_base = []
-            for i in items:
-                base = Model(dummy=True)
-                for k in i.keys():
-                    base.__setattr__(k, i[k])
-                items_base.append(base)
-            return items_base
+        return cls._execute_select_or_delete(sql_select)
 
     @classmethod
     def _make_select(cls):
@@ -165,10 +152,25 @@ class Model(object):
         with cn:
             cn.row_factory = lite.Row
             cursor = cn.cursor()
-            cursor.execute(sql)
+
+            try:
+                cursor.execute(sql)
+            except lite.OperationalError as e:
+                if 'no such table' in e.message:
+                    return []
+                raise e
+
             if for_delete:
                 return cursor.rowcount
-            return cursor.fetchall()
+            else:
+                items = cursor.fetchall()
+                list_items = []
+                for i in items:
+                    base = Model(dummy=True)
+                    for k in i.keys():
+                        base.__setattr__(k, i[k])
+                    list_items.append(base)
+                return list_items
 
     @classmethod
     def _check_config(cls):

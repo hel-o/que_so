@@ -9,7 +9,7 @@ import sqlite3 as lite
 from datetime import datetime
 
 __author__ = 'Helo'
-__version__ = '0.1'
+__version__ = '0.1.2'
 __license__ = 'BSD'
 
 
@@ -27,13 +27,17 @@ class Model(object):
     __database__ = None
     __table__ = None
 
-    _fields_with_value = []
-    _fields_value = []
     _form_fields = {}
     _select_fields = '*'
     _select_filter = None
 
-    def __init__(self):
+    def __init__(self, dummy=False):
+        self._fields_with_value = []
+        self._fields_value = []
+
+        if dummy:
+            return
+
         self._check_config()
         self._search_form_fields()
 
@@ -106,7 +110,7 @@ class Model(object):
                 return cursor.lastrowid
 
     @classmethod
-    def select(cls, fields='*'):
+    def select(cls, fields='rowid, *'):
         cls._select_fields = fields
         return cls
 
@@ -126,7 +130,20 @@ class Model(object):
     @classmethod
     def all(cls):
         sql_select = cls._make_select()
-        return cls._execute_select_or_delete(sql_select)
+        try:
+            items = cls._execute_select_or_delete(sql_select)
+        except lite.OperationalError as e:
+            if 'no such table' in e.message:
+                return []
+            raise e
+        else:
+            items_base = []
+            for i in items:
+                base = Model(dummy=True)
+                for k in i.keys():
+                    base.__setattr__(k, i[k])
+                items_base.append(base)
+            return items_base
 
     @classmethod
     def _make_select(cls):
@@ -146,6 +163,7 @@ class Model(object):
     def _execute_select_or_delete(cls, sql, for_delete=False):
         cn = lite.connect(cls.__database__)
         with cn:
+            cn.row_factory = lite.Row
             cursor = cn.cursor()
             cursor.execute(sql)
             if for_delete:
